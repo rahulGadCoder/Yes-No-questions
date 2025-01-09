@@ -1,0 +1,53 @@
+import { describe, it, vi, beforeEach, afterEach, expect } from "vitest";
+
+function handleNvigation(route) {
+  const el = document.getElementById(route);
+  if (el) {
+    const headerOffset = 160;
+    const elpos = el.getBoundingClientRect().top;
+    const offsetPostion = elpos + window.scrollY - headerOffset;
+
+    window.scrollTo({
+      top: offsetPostion,
+      behaviour: "smooth",
+    });
+  }
+}
+
+describe("handleNvigation", () => {
+  beforeEach(() => {
+    // Mocking window.scrollTo
+    vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    // Set up a mock DOM
+    document.body.innerHTML = `<div id="test-route" style="position: absolute; top: 500px;">Test Element</div>`;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = ""; // Clean up DOM
+  });
+
+  it("should scroll to the correct position when the element exists", () => {
+    handleNvigation("test-route");
+
+    const el = document.getElementById("test-route");
+    const headerOffset = 160;
+    const expectedOffset =
+      el.getBoundingClientRect().top + window.scrollY - headerOffset;
+
+    expect(window.scrollTo).toHaveBeenCalledWith({
+      top: expectedOffset,
+      behaviour: "smooth",
+    });
+  });
+
+  it("should not throw an error if the element does not exist", () => {
+    expect(() => handleNvigation("non-existent-route")).not.toThrow();
+    expect(window.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("should not call scrollTo if the element does not exist", () => {
+    handleNvigation("non-existent-route");
+    expect(window.scrollTo).not.toHaveBeenCalled();
+  });
+});
