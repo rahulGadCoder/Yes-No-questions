@@ -1,45 +1,4 @@
-import clsx from "clsx";
-import { RouterLink } from "@fiserv/ui-extensions";
-import type { NavProps } from "../utils/cardCommonInfoTypes";
-
-function RouterNavLink(props: NavProps) {
-  const cardNavLinkStyles = clsx(
-    "block rounded",
-    "px-4",
-    "py-2.5",
-    "text-base",
-    "font-normal",
-    "text-primary",
-    "transition-all",
-    "hover:bg-[#F4F4F4]"
-  );
-
-  function handleClick(e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) {
-    e.preventDefault();
-
-    if (props.onClick) {
-      props.onClick(e);
-    } else {
-      window.location.assign("/myca" + props.route);
-    }
-  }
-
-  return (
-    <RouterLink
-      className={cardNavLinkStyles}
-      onClick={handleClick}
-      to={props.route}
-    >
-      {props.navTextName}
-    </RouterLink>
-  );
-}
-
-export default RouterNavLink;
-
-
-
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { vi } from "vitest";
 import RouterNavLink from "../../src/components/RouterNavigationLink";
 
@@ -64,15 +23,28 @@ vi.mock("@fiserv/ui-extensions", () => ({
 }));
 
 describe("RouterNavLink Component", () => {
-  it("Applys the correct Route", () => {
-    render(<RouterNavLink navTextName="Card Management" route="/" />);
+  const mockOnClick = vi.fn();
+
+  beforeEach(() => {
+    mockOnClick.mockClear();
+    vi.spyOn(window, "location", "get").mockReturnValue({
+      assign: vi.fn(),
+    } as unknown as Location);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("applies the correct route", () => {
+    render(<RouterNavLink navTextName="Card Management" route="/card-management" />);
 
     const link = screen.getByText("Card Management");
 
-    expect(link).toHaveAttribute("href", "/");
+    expect(link).toHaveAttribute("href", "/card-management");
   });
 
-  it("renders correct Class names", () => {
+  it("renders correct class names", () => {
     render(<RouterNavLink navTextName="Personal Details" route="/" />);
 
     const link = screen.getByText("Personal Details");
@@ -86,12 +58,57 @@ describe("RouterNavLink Component", () => {
     expect(link).toHaveClass("hover:bg-[#F4F4F4]");
   });
 
-  it("renders Nav Text", () => {
+  it("renders the navigation text", () => {
     render(<RouterNavLink navTextName="Personal Details" route="/" />);
 
     const link = screen.getByText("Personal Details");
 
     expect(link).toBeInTheDocument();
     expect(link).toHaveClass("block");
+  });
+
+  it("calls the provided onClick handler when clicked", () => {
+    render(<RouterNavLink navTextName="Communication" route="/" onClick={mockOnClick} />);
+
+    const link = screen.getByText("Communication");
+    fireEvent.click(link);
+
+    expect(mockOnClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls window.location.assign when onClick is not provided", () => {
+    render(<RouterNavLink navTextName="Settings" route="/settings" />);
+
+    const link = screen.getByText("Settings");
+    fireEvent.click(link);
+
+    expect(window.location.assign).toHaveBeenCalledWith("/myca/settings");
+  });
+
+  it("handles missing route gracefully", () => {
+    render(<RouterNavLink navTextName="Missing Route" route="" />);
+
+    const link = screen.getByText("Missing Route");
+
+    expect(link).toHaveAttribute("href", "");
+  });
+
+  it("handles missing navTextName gracefully", () => {
+    render(<RouterNavLink navTextName="" route="/test" />);
+
+    const link = screen.getByTestId("router-link");
+
+    expect(link).toHaveAttribute("href", "/test");
+    expect(link.textContent).toBe("");
+  });
+
+  it("handles empty props without crashing", () => {
+    // @ts-ignore - Intentionally passing undefined props to test resilience
+    render(<RouterNavLink />);
+
+    const link = screen.getByTestId("router-link");
+
+    expect(link).toHaveAttribute("href", "");
+    expect(link.textContent).toBe("");
   });
 });
