@@ -1,107 +1,97 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { createRoutesStub } from "@fiserv/util-testing";
-import QuickLinksNavigation from "../../src/components/QuickLinksNavigation";
+import clsx from "clsx";
+import { RouterLink } from "@fiserv/ui-extensions";
+import type { NavProps } from "../utils/cardCommonInfoTypes";
 
-describe("QuickLinksNavigation Component", () => {
-  const Stub = createRoutesStub([
-    {
-      path: "*",
-      Component: () => <QuickLinksNavigation />,
-    },
-  ]);
+function RouterNavLink(props: NavProps) {
+  const cardNavLinkStyles = clsx(
+    "block rounded",
+    "px-4",
+    "py-2.5",
+    "text-base",
+    "font-normal",
+    "text-primary",
+    "transition-all",
+    "hover:bg-[#F4F4F4]"
+  );
 
-  const dummyNavLinks = [
-    { route: "card-management", navTextName: "Card Management" },
-    { route: "personal-details", navTextName: "Personal Details" },
-    { route: "communication-online-statement", navTextName: "Communication & Online Statement" },
-  ];
+  function handleClick(e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) {
+    e.preventDefault();
 
-  // Mocking QuickNavLink to replace its implementation
-  vi.mock("../utils/navigationLinks", () => ({
-    QuickNavLink: dummyNavLinks,
-  }));
+    if (props.onClick) {
+      props.onClick(e);
+    } else {
+      window.location.assign("/myca" + props.route);
+    }
+  }
 
-  beforeEach(() => {
-    vi.spyOn(window, "scrollTo").mockImplementation(() => {}); // Mock scrollTo
-    document.body.innerHTML = ""; // Reset DOM between tests
-  });
+  return (
+    <RouterLink
+      className={cardNavLinkStyles}
+      onClick={handleClick}
+      to={props.route}
+    >
+      {props.navTextName}
+    </RouterLink>
+  );
+}
 
-  afterEach(() => {
-    vi.restoreAllMocks(); // Restore original mocks
-  });
+export default RouterNavLink;
 
-  it("renders correctly with header", () => {
-    render(<Stub />);
 
-    // Verify header text is rendered
-    expect(screen.getByText(/Quick Links/i)).toBeInTheDocument();
-  });
 
-  it("renders all links based on QuickNavLink", () => {
-    render(<Stub />);
+import { render, screen } from "@testing-library/react";
+import { vi } from "vitest";
+import RouterNavLink from "../../src/components/RouterNavigationLink";
 
-    // Verify all navigation links are rendered
-    dummyNavLinks.forEach((link) => {
-      expect(screen.getByText(link.navTextName)).toBeInTheDocument();
-    });
-  });
+vi.mock("@fiserv/ui-extensions", () => ({
+  RouterLink: vi.fn(
+    ({
+      children,
+      to,
+      className,
+    }: {
+      children: string;
+      to: string;
+      className: string;
+    }) => {
+      return (
+        <a href={to} className={className} data-testid="router-link">
+          {children}
+        </a>
+      );
+    }
+  ),
+}));
 
-  it("calls handleNavigation and scrolls to the correct position when link is clicked", () => {
-    render(<Stub />);
+describe("RouterNavLink Component", () => {
+  it("Applys the correct Route", () => {
+    render(<RouterNavLink navTextName="Card Management" route="/" />);
 
-    // Mock an element in the DOM
-    const mockElement = document.createElement("div");
-    mockElement.id = "card-management";
-    mockElement.getBoundingClientRect = () => ({
-      top: 500, // Simulating the element position
-    });
-    document.body.appendChild(mockElement);
-
-    // Simulate a click on the first navigation link
     const link = screen.getByText("Card Management");
-    fireEvent.click(link);
 
-    // Validate that scrollTo was called with the correct offset
-    const expectedOffset = 500 + window.scrollY - 160; // top + scrollY - headerOffset
-    expect(window.scrollTo).toHaveBeenCalledWith({
-      top: expectedOffset,
-      behavior: "smooth",
-    });
+    expect(link).toHaveAttribute("href", "/");
   });
 
-  it("does not call scrollTo if the element does not exist", () => {
-    render(<Stub />);
+  it("renders correct Class names", () => {
+    render(<RouterNavLink navTextName="Personal Details" route="/" />);
 
-    // Simulate a click on a link without the corresponding DOM element
     const link = screen.getByText("Personal Details");
-    fireEvent.click(link);
 
-    // Ensure scrollTo is not called
-    expect(window.scrollTo).not.toHaveBeenCalled();
+    expect(link).toHaveClass("block");
+    expect(link).toHaveClass("px-4");
+    expect(link).toHaveClass("py-2.5");
+    expect(link).toHaveClass("font-normal");
+    expect(link).toHaveClass("text-primary");
+    expect(link).toHaveClass("transition-all");
+    expect(link).toHaveClass("hover:bg-[#F4F4F4]");
   });
 
-  it("renders dynamic links with RouterNavigationLink component", () => {
-    render(<Stub />);
+  it("renders Nav Text", () => {
+    render(<RouterNavLink navTextName="Personal Details" route="/" />);
 
-    // Verify that RouterNavigationLink receives the correct props
-    const links = screen.getAllByRole("link"); // Assuming RouterNavigationLink renders <a> tags
-    expect(links).toHaveLength(dummyNavLinks.length);
+    const link = screen.getByText("Personal Details");
 
-    links.forEach((link, index) => {
-      expect(link).toHaveAttribute("href", `#${dummyNavLinks[index].route}`);
-      expect(link.textContent).toBe(dummyNavLinks[index].navTextName);
-    });
-  });
-
-  it("handles click event and executes the onClick handler in RouterNavigationLink", () => {
-    render(<Stub />);
-
-    // Simulate a click and verify onClick is called
-    const link = screen.getByText("Communication & Online Statement");
-    fireEvent.click(link);
-
-    // Validate scrollTo is attempted (will fail gracefully if element not found)
-    expect(window.scrollTo).toHaveBeenCalledTimes(1);
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveClass("block");
   });
 });
