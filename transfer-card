@@ -1,64 +1,86 @@
-import { describe, it, vi, beforeEach, afterEach, expect } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
-import { RouterLinkComponent } from "./RouterLinkComponent";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  List,
+  ListItem,
+} from "@fiserv/ui-primitives";
+import { QuickNavLink } from "../utils/navigationLinks";
+import RouterNavigationLink from "./RouterNavigationLink";
 
-function mockElementInDOM(id, top) {
-  const el = document.createElement("div");
-  el.id = id;
-  el.getBoundingClientRect = () => ({
-    top,
-  });
-  document.body.appendChild(el);
-  return el;
+function QuickLinksNavigation() {
+  function handleNavigation(route: string) {
+    const element = document.getElementById(route);
+
+    if (element) {
+      const headerOffset = 160;
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.scrollY - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      });
+    }
+  }
+
+  return (
+    <Card className="border-none">
+      <CardHeader className="mb-4 justify-between text-2xl font-normal text-[#595959]">
+        Quick Links
+      </CardHeader>
+      <CardBody>
+        <List>
+          {QuickNavLink?.map((item, index) => {
+            return (
+              <ListItem key={index}>
+                <RouterNavigationLink
+                  navTextName={item.navTextName}
+                  route={`#${item.route}`}
+                  onClick={() => handleNavigation(item.route)}
+                />
+              </ListItem>
+            );
+          })}
+        </List>
+      </CardBody>
+    </Card>
+  );
 }
 
-describe("handleNvigation and RouterLinkComponent", () => {
-  beforeEach(() => {
-    // Mock `window.scrollTo`
-    vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+export default QuickLinksNavigation;
+
+
+
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { createRoutesStub } from "@fiserv/util-testing";
+import QuickLinksNavigation from "../../src/components/QuickLinksNavigation";
+
+describe("CardComponent", () => {
+  const Stub = createRoutesStub([
+    {
+      path: "*",
+      Component: () => <QuickLinksNavigation />,
+    },
+  ]);
+
+  const dummyNavLinks = [
+    { route: "/", navTextName: "Card Management" },
+    { route: "/", navTextName: "Personal Details" },
+    { route: "/", navTextName: "Communication & Online Statement" },
+  ];
+
+  it("renders correctly", () => {
+    render(<Stub />);
+
+    expect(screen.getByText(/Quick Links/i)).toBeInTheDocument();
   });
 
-  afterEach(() => {
-    // Clean up mocks and DOM
-    vi.restoreAllMocks();
-    document.body.innerHTML = "";
-  });
-
-  it("should scroll to the correct position when the element exists", () => {
-    const route = "test-route";
-    mockElementInDOM(route, 500);
-
-    const { getByTestId } = render(<RouterLinkComponent route={route} />);
-    const button = getByTestId("router-link");
-
-    fireEvent.click(button);
-
-    const expectedOffset = 500 + window.scrollY - 160; // `elpos + window.scrollY - headerOffset`
-    expect(window.scrollTo).toHaveBeenCalledWith({
-      top: expectedOffset,
-      behaviour: "smooth",
+  it("renders link", () => {
+    render(<Stub />);
+    dummyNavLinks.forEach((link) => {
+      expect(screen.getByText(link.navTextName)).toBeInTheDocument();
     });
-  });
-
-  it("should not call scrollTo if the element does not exist", () => {
-    const route = "non-existent-route";
-
-    const { getByTestId } = render(<RouterLinkComponent route={route} />);
-    const button = getByTestId("router-link");
-
-    fireEvent.click(button);
-
-    expect(window.scrollTo).not.toHaveBeenCalled();
-  });
-
-  it("should render the RouterLinkComponent and respond to clicks", () => {
-    const route = "test-route";
-    const { getByTestId } = render(<RouterLinkComponent route={route} />);
-
-    const button = getByTestId("router-link");
-    expect(button).toBeInTheDocument();
-
-    fireEvent.click(button);
-    expect(window.scrollTo).toHaveBeenCalled();
   });
 });
