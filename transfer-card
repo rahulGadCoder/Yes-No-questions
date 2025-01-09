@@ -1,18 +1,64 @@
-import { render, fireEvent } from "@testing-library/vue";
-import { describe, it, expect, vi } from "vitest";
-import RouterLinkComponent from "./RouterLinkComponent.vue";
+import { describe, it, vi, beforeEach, afterEach, expect } from "vitest";
+import { render, fireEvent } from "@testing-library/react";
+import { RouterLinkComponent } from "./RouterLinkComponent";
 
-vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+function mockElementInDOM(id, top) {
+  const el = document.createElement("div");
+  el.id = id;
+  el.getBoundingClientRect = () => ({
+    top,
+  });
+  document.body.appendChild(el);
+  return el;
+}
 
-describe("RouterLinkComponent", () => {
-  it("should call handleNvigation on click", async () => {
-    const { getByText } = render(RouterLinkComponent, {
-      props: { route: "test-route" },
+describe("handleNvigation and RouterLinkComponent", () => {
+  beforeEach(() => {
+    // Mock `window.scrollTo`
+    vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    // Clean up mocks and DOM
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("should scroll to the correct position when the element exists", () => {
+    const route = "test-route";
+    mockElementInDOM(route, 500);
+
+    const { getByTestId } = render(<RouterLinkComponent route={route} />);
+    const button = getByTestId("router-link");
+
+    fireEvent.click(button);
+
+    const expectedOffset = 500 + window.scrollY - 160; // `elpos + window.scrollY - headerOffset`
+    expect(window.scrollTo).toHaveBeenCalledWith({
+      top: expectedOffset,
+      behaviour: "smooth",
     });
+  });
 
-    const link = getByText("Test Link"); // Assuming RouterLinkComponent renders a link with text "Test Link"
-    await fireEvent.click(link);
+  it("should not call scrollTo if the element does not exist", () => {
+    const route = "non-existent-route";
 
+    const { getByTestId } = render(<RouterLinkComponent route={route} />);
+    const button = getByTestId("router-link");
+
+    fireEvent.click(button);
+
+    expect(window.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("should render the RouterLinkComponent and respond to clicks", () => {
+    const route = "test-route";
+    const { getByTestId } = render(<RouterLinkComponent route={route} />);
+
+    const button = getByTestId("router-link");
+    expect(button).toBeInTheDocument();
+
+    fireEvent.click(button);
     expect(window.scrollTo).toHaveBeenCalled();
   });
 });
