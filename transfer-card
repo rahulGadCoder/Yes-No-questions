@@ -24,12 +24,11 @@ vi.mock("@fiserv/ui-extensions", () => ({
 
 describe("RouterNavLink Component", () => {
   const mockOnClick = vi.fn();
+  let locationAssignSpy: jest.SpyInstance;
 
   beforeEach(() => {
     mockOnClick.mockClear();
-    vi.spyOn(window, "location", "get").mockReturnValue({
-      assign: vi.fn(),
-    } as unknown as Location);
+    locationAssignSpy = vi.spyOn(window.location, "assign").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -82,7 +81,7 @@ describe("RouterNavLink Component", () => {
     const link = screen.getByText("Settings");
     fireEvent.click(link);
 
-    expect(window.location.assign).toHaveBeenCalledWith("/myca/settings");
+    expect(locationAssignSpy).toHaveBeenCalledWith("/myca/settings");
   });
 
   it("handles missing route gracefully", () => {
